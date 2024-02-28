@@ -25,4 +25,28 @@ const { assert } = require("chai");
           assert.equal(tokenCounter.toString(), "0");
         });
       });
+
+      // mint
+      describe("mint NFT", async () => {
+        beforeEach(async () => {
+          const txResponse = await BasicNft.mintNft();
+          await txResponse.wait(1);
+        });
+
+        it("Allow users to mint an NFT, and updates appropriately", async () => {
+          const tokenURI = await BasicNft.tokenURI(0);
+          const tokenCounter = await BasicNft.getTokenCounter();
+
+          assert.equal(tokenCounter.toString(), "1");
+          assert.equal(tokenURI, await BasicNft.TOKEN_URI());
+        });
+
+        it("Show the correct balance and owner of the NFT", async () => {
+          const deployerBalance = await BasicNft.balanceOf(deployer);
+          const owner = await BasicNft.ownerOf(0);
+
+          assert.equal(deployerBalance.toString(), "1");
+          assert.equal(owner, deployer);
+        });
+      });
     });
