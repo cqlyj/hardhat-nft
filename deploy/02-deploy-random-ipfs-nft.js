@@ -39,23 +39,20 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     tokenUris = await handleTokenUris();
   }
 
-  if (developmentChains.includes(network.name)) {
+  if (chainId == 31337) {
     vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock");
     vrfCoordinatorV2Address = vrfCoordinatorV2Mock.target;
-
-    const tx = await vrfCoordinatorV2Mock.createSubscription();
-    const txReceipt = await tx.wait(1);
-    subscriptionId = txReceipt.logs[0].args[0];
-
+    const transactionResponse = await vrfCoordinatorV2Mock.createSubscription();
+    const transactionReceipt = await transactionResponse.wait(1);
+    subscriptionId = transactionReceipt.logs[0].args.subId;
     await vrfCoordinatorV2Mock.fundSubscription(subscriptionId, FUND_AMOUNT);
   } else {
-    vrfCoordinatorV2Address = networkConfig[chainId]["vrfCoordinatorV2"];
-    subscriptionId = networkConfig[chainId]["subscriptionId"];
+    vrfCoordinatorV2Address = networkConfig[chainId].vrfCoordinatorV2;
+    subscriptionId = networkConfig[chainId].subscriptionId;
   }
 
   log("----------------------------------------------------");
-
-  const args = [
+  const arguments = [
     vrfCoordinatorV2Address,
     subscriptionId,
     networkConfig[chainId]["gasLane"],
@@ -65,22 +62,26 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   ];
   const randomIpfsNft = await deploy("RandomIpfsNft", {
     from: deployer,
-    args: args,
+    args: arguments,
     log: true,
     waitConfirmations: network.config.blockConfirmations || 1,
   });
 
-  await vrfCoordinatorV2Mock.addConsumer(subscriptionId, randomIpfsNft.address);
+  if (chainId == 31337) {
+    await vrfCoordinatorV2Mock.addConsumer(
+      subscriptionId,
+      randomIpfsNft.address
+    );
+  }
 
+  // Verify the deployment
   if (
     !developmentChains.includes(network.name) &&
     process.env.ETHERSCAN_API_KEY
   ) {
     log("Verifying...");
-    await verify(randomIpfsNft.address, args);
+    await verify(randomIpfsNft.address, arguments);
   }
-
-  log("_________________________________");
 };
 
 async function handleTokenUris() {
